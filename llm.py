@@ -7,7 +7,11 @@ logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
-        self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        try:
+            self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        except Exception as e:
+            logger.error(f"Ошибка инициализации OpenAI клиента: {e}")
+            raise
     
     def format_messages_for_summary(self, messages: List[Dict]) -> str:
         """Форматирование сообщений для отправки в LLM"""

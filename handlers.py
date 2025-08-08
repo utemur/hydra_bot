@@ -18,7 +18,6 @@ class SummaryStates(StatesGroup):
 
 # Инициализация сервисов
 db = Database()
-llm_service = LLMService()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -192,6 +191,7 @@ async def process_time_selection(callback: CallbackQuery, state: FSMContext):
         group_title = messages[0].get('chat_title', f"Группа {chat_id}") if messages else f"Группа {chat_id}"
         
         # Генерируем пересказ
+        llm_service = LLMService()
         summary = await llm_service.generate_group_summary(messages, group_title, time_period)
         
         # Отправляем результат
@@ -228,6 +228,7 @@ async def handle_today_summary(message: Message):
             await message.answer("❌ Нет сообщений за сегодня в этой группе.")
             return
         
+        llm_service = LLMService()
         summary = await llm_service.generate_group_summary(messages, group_title, "сегодня")
         await message.answer(summary)
         
@@ -259,6 +260,7 @@ async def handle_hours_summary(message: Message, hours: int):
             return
         
         time_period = f"последние {hours} часов"
+        llm_service = LLMService()
         summary = await llm_service.generate_group_summary(messages, group_title, time_period)
         await message.answer(summary)
         
