@@ -12,7 +12,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('bot.log'),
         logging.StreamHandler()
     ]
 )
@@ -32,11 +31,7 @@ async def root(request):
     """Корневой эндпоинт"""
     return web.json_response({
         "message": "Telegram Summary Bot is running!",
-        "status": "active",
-        "endpoints": {
-            "health": "/health",
-            "root": "/"
-        }
+        "status": "active"
     })
 
 async def start_web_server():
@@ -53,24 +48,30 @@ async def start_web_server():
     logger.info(f"🌐 Веб-сервер запущен на порту {port}")
     return runner
 
+async def start_bot():
+    """Запуск бота"""
+    try:
+        bot = Bot(token=BOT_TOKEN)
+        storage = MemoryStorage()
+        dp = Dispatcher(storage=storage)
+        dp.include_router(router)
+        
+        logger.info("🤖 Бот запускается...")
+        await dp.start_polling(bot)
+    except Exception as e:
+        logger.error(f"Ошибка при запуске бота: {e}")
+
 async def main():
-    """Основная функция запуска бота и веб-сервера"""
+    """Основная функция запуска"""
     try:
         # Запуск веб-сервера
         web_runner = await start_web_server()
         
-        # Инициализация бота и диспетчера
-        bot = Bot(token=BOT_TOKEN)
-        storage = MemoryStorage()
-        dp = Dispatcher(storage=storage)
+        # Запуск бота в отдельной задаче
+        bot_task = asyncio.create_task(start_bot())
         
-        # Регистрация роутеров
-        dp.include_router(router)
-        
-        logger.info("🤖 Бот запускается...")
-        
-        # Запуск бота
-        await dp.start_polling(bot)
+        # Ждем завершения бота
+        await bot_task
         
     except Exception as e:
         logger.error(f"Ошибка при запуске: {e}")
