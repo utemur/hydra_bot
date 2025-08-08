@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import os
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiohttp import web
 from config import BOT_TOKEN
 from handlers import router
 
@@ -17,9 +19,46 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Веб-сервер для healthcheck
+async def healthcheck(request):
+    """Эндпоинт для healthcheck Railway"""
+    return web.json_response({
+        "status": "healthy",
+        "service": "telegram-summary-bot",
+        "version": "1.0.0"
+    })
+
+async def root(request):
+    """Корневой эндпоинт"""
+    return web.json_response({
+        "message": "Telegram Summary Bot is running!",
+        "status": "active",
+        "endpoints": {
+            "health": "/health",
+            "root": "/"
+        }
+    })
+
+async def start_web_server():
+    """Запуск веб-сервера"""
+    app = web.Application()
+    app.router.add_get('/', root)
+    app.router.add_get('/health', healthcheck)
+    
+    port = int(os.environ.get('PORT', 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logger.info(f"🌐 Веб-сервер запущен на порту {port}")
+    return runner
+
 async def main():
-    """Основная функция запуска бота"""
+    """Основная функция запуска бота и веб-сервера"""
     try:
+        # Запуск веб-сервера
+        web_runner = await start_web_server()
+        
         # Инициализация бота и диспетчера
         bot = Bot(token=BOT_TOKEN)
         storage = MemoryStorage()
@@ -34,14 +73,14 @@ async def main():
         await dp.start_polling(bot)
         
     except Exception as e:
-        logger.error(f"Ошибка при запуске бота: {e}")
+        logger.error(f"Ошибка при запуске: {e}")
     finally:
-        logger.info("Бот остановлен")
+        logger.info("Приложение остановлено")
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Бот остановлен пользователем")
+        logger.info("Приложение остановлено пользователем")
     except Exception as e:
         logger.error(f"Критическая ошибка: {e}") 
